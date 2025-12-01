@@ -41,38 +41,23 @@ function sample(samplingmodel::MyEpsilonSamplingBanditModel, worldmodel::Abstrac
 
         ϵₜ = (1.0/(t^(1/3)))*(log(K*t))^(1/3); # compute the epsilon value -
 
-        # create a new parameter array -
-        parameter_array = Array{Float64,2}(undef, K, 2);
-        fill!(parameter_array, 0.0);
-
-        # update the results archive -
+        # update the results archive before modifying the distributions
         time_sample_results_dict_Ts[t] = deepcopy(action_distribution);
 
-        aₜ = nothing; # default to nothing 
-        if (rand() ≤ ϵₜ) # explore with probability epsilon
-            aₜ = rand(dcat); # choose a random action uniformly
-        else
-
-            # for each arm, sample from the distribution -
-            foreach(k -> θ̂_vector[k] = rand(action_distribution[k]), 1:K); # choose the action with the highest mean
-
-            # ok: let's choose an action -
-            aₜ = argmax(θ̂_vector);
-
-            # pass that action to the world function, gives back a reward -
-            rₜ = world(t, aₜ, worldmodel);
-
-            # update the parameters -
-            # first, get the old parameters -
-            αₒ,βₒ = action_distribution[aₜ] |> params;
-
-            # update the old values with the new values -
-            αₜ = αₒ + rₜ
-            βₜ = βₒ + (1-rₜ)
-
-            # build new distribution -
-            action_distribution[aₜ] = Beta(αₜ, βₜ);
+        # choose an action: explore with probability ϵₜ, otherwise exploit
+        aₜ = rand() ≤ ϵₜ ? rand(dcat) : begin
+            foreach(k -> θ̂_vector[k] = rand(action_distribution[k]), 1:K)
+            argmax(θ̂_vector)
         end
+
+        # pass that action to the world function to obtain a reward
+        rₜ = world(t, aₜ, worldmodel);
+
+        # update the parameters for the selected arm
+        αₒ, βₒ = action_distribution[aₜ] |> params;
+        αₜ = αₒ + rₜ
+        βₜ = βₒ + (1 - rₜ)
+        action_distribution[aₜ] = Beta(αₜ, βₜ);
     end
 
     return time_sample_results_dict_Ts;

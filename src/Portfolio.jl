@@ -100,8 +100,7 @@ function shares(t::Int64, model::MyInvestorMarketContextModel;
 
      # Compute the optimal share count -
     n = zeros(K); # initialize space for optimal solution
-    S = findall(γᵢ -> γᵢ > 0, γ); # Which assets does our preference model tell is to buy?
-    # S = 1:K; # TEMPORARY: consider all assets for now
+    S = 1:K; # consider all assets when allocating
 
     # In the set of assets to explore, do we have any non-preferred assets?
     negative_gamma_flag = any(γ[S] .< 0);
